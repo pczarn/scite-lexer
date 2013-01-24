@@ -1264,7 +1264,16 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
             if (!isSafeWordcharOrHigh(ch)) {
                 styler.ColourTo(i - 1, state);
                 redo_char(i, ch, chNext, chNext2, state); // pass by ref
-                preferRE = false;
+					if (inner_string_count > 0
+							&& inner_string_types[inner_string_count-1] == SCE_RB_REGEX) {
+						exitInnerExpression(inner_string_types,
+								inner_expn_brace_counts,
+								inner_quotes,
+								inner_string_count,
+								state, brace_counts, Quote);
+					} else {
+						preferRE = false;
+					}
             }
         } else if (state == SCE_RB_GLOBAL) {
             if (!isSafeWordcharOrHigh(ch)) {
@@ -1280,7 +1289,16 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
                     styler.ColourTo(i - 1, state);
                     redo_char(i, ch, chNext, chNext2, state); // pass by ref
                 }
-                preferRE = false;
+					if (inner_string_count > 0
+							&& inner_string_types[inner_string_count-1] == SCE_RB_REGEX) {
+						exitInnerExpression(inner_string_types,
+								inner_expn_brace_counts,
+								inner_quotes,
+								inner_string_count,
+								state, brace_counts, Quote);
+					} else {
+						preferRE = false;
+					}
             }
         } else if (state == SCE_RB_POD) {
             // PODs end with ^=end\s, -- any whitespace can follow =end
@@ -1329,6 +1347,15 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
                     preferRE = true;
                     // Skip one
                     advance_char(i, ch, chNext, chNext2);
+					} else if (chNext == '@' || chNext == '$') {
+						// process #@var, #@@class_var, #$global
+						styler.ColourTo(i - 1, state);
+						styler.ColourTo(i, SCE_RB_OPERATOR);
+						enterInnerExpression(inner_string_types,
+								inner_expn_brace_counts,
+								inner_quotes,
+								inner_string_count,
+								state, brace_counts, Quote);
                 } else {
                     //todo: distinguish comments from pound chars
                     // for now, handle as comment
