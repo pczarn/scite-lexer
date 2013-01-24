@@ -696,6 +696,7 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
 	bool preferRE = true;
     int state = initStyle;
 	int lengthDoc = startPos + length;
+   int interpState = 0;
 
 	char prevWord[MAX_KEYWORD_LENGTH + 1]; // 1 byte for zero
 	prevWord[0] = '\0';
@@ -1232,8 +1233,28 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
             // Non-indentable: look forwards, like in Perl
             //
             // Why: so we can quickly resolve things like <<-" abc"
-
-            if (!HereDoc.CanBeIndented) {
+            if (!HereDoc.Quoted && ch == '#') {
+                if (chNext == '{'
+                    && inner_string_count < INNER_STRINGS_MAX_COUNT) {
+                    // process #{ ... }
+                    styler.ColourTo(i - 1, state);
+                    styler.ColourTo(i + 1, SCE_RB_OPERATOR);
+                    enterInnerExpression(inner_string_types,
+                                        inner_expn_brace_counts,
+                                        inner_quotes,
+                                        inner_string_count,
+                                        state, brace_counts, Quote);
+                    preferRE = true;
+                    // Skip one
+                    advance_char(i, ch, chNext, chNext2);
+                } else if (chNext == '@' || chNext == '$') {
+                    // process #@var, #@@class_var, #$global
+                    styler.ColourTo(i - 1, state);
+                    styler.ColourTo(i, SCE_RB_OPERATOR);
+                    interpState = state;
+                    state = SCE_RB_DEFAULT;
+                }
+            } else if (!HereDoc.CanBeIndented) {
                 if (isEOLChar(chPrev)
                     && isMatch(styler, lengthDoc, i, HereDoc.Delimiter)) {
                     styler.ColourTo(i - 1, state);
@@ -1264,14 +1285,9 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
             if (!isSafeWordcharOrHigh(ch)) {
                 styler.ColourTo(i - 1, state);
                 redo_char(i, ch, chNext, chNext2, state); // pass by ref
-					if (inner_string_count > 0
-							&& inner_string_types[inner_string_count-1] == SCE_RB_REGEX) {
-						exitInnerExpression(inner_string_types,
-								inner_expn_brace_counts,
-								inner_quotes,
-								inner_string_count,
-								state, brace_counts, Quote);
-					} else {
+                if (interpState) {
+                    state = interpState;
+                } else {
 						preferRE = false;
 					}
             }
@@ -1289,13 +1305,8 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
                     styler.ColourTo(i - 1, state);
                     redo_char(i, ch, chNext, chNext2, state); // pass by ref
                 }
-					if (inner_string_count > 0
-							&& inner_string_types[inner_string_count-1] == SCE_RB_REGEX) {
-						exitInnerExpression(inner_string_types,
-								inner_expn_brace_counts,
-								inner_quotes,
-								inner_string_count,
-								state, brace_counts, Quote);
+					if (interpState) {
+                    state = interpState;
 					} else {
 						preferRE = false;
 					}
@@ -1351,11 +1362,8 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
 						// process #@var, #@@class_var, #$global
 						styler.ColourTo(i - 1, state);
 						styler.ColourTo(i, SCE_RB_OPERATOR);
-						enterInnerExpression(inner_string_types,
-								inner_expn_brace_counts,
-								inner_quotes,
-								inner_string_count,
-								state, brace_counts, Quote);
+                    interpState = state;
+                    state = SCE_RB_DEFAULT;
                 } else {
                     //todo: distinguish comments from pound chars
                     // for now, handle as comment
