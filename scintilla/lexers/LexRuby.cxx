@@ -1426,6 +1426,14 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
                 preferRE = true;
                 // Skip one
                 advance_char(i, ch, chNext, chNext2);
+            } else if (ch == '#' && (chNext == '@' || chNext == '$')
+                       && state != SCE_RB_CHARACTER
+                       && state != SCE_RB_STRING_Q) {
+                // process #@var, #@@class_var, #$global
+                styler.ColourTo(i - 1, state);
+                styler.ColourTo(i, SCE_RB_OPERATOR);
+                interpState = state;
+                state = SCE_RB_DEFAULT;
             }
         }
 
