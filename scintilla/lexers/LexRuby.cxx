@@ -956,11 +956,11 @@ static void ColouriseRbDoc(unsigned int startPos, int length, int initStyle,
                         styler.ColourTo(i, SCE_RB_SYMBOL);
                         state = SCE_RB_DEFAULT;
                     }
-				} else if (!preferRE) {
-					// Don't color symbol strings (yet)
-					// Just color the ":" and color rest as string
-					styler.ColourTo(i, SCE_RB_SYMBOL);
-					state = SCE_RB_DEFAULT;
+                } else if (chNext == '\'' || chNext == '"') {
+                    // Don't color symbol strings (yet)
+                    // Just color the ":" and color rest as string
+                    styler.ColourTo(i, SCE_RB_SYMBOL);
+                    state = SCE_RB_DEFAULT;
                 } else {
                     styler.ColourTo(i, SCE_RB_OPERATOR);
                     state = SCE_RB_DEFAULT;
